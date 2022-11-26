@@ -46,8 +46,6 @@ void coefficient() {
 		int aux4 = 0;
 		TGraphErrors* gr[Nads];
 		TGraphErrors* all_gr = new TGraphErrors();
-		// TGraph* gr[Nads];
-		// TCanvas* c[Nads];
 		TF1* f1[Nads];
 		TF1* f_all = new TF1("f_all","[0] + [1]*x");
 		f_all->SetParNames("q","m");
