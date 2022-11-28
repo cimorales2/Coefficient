@@ -24,7 +24,7 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 	int det=0;
 	float engy;
 
-	const int init_run_hour = 367982, end_run_hour = 417793;
+	const int init_run_hour = 367982, end_run_hour = 417793; // initial and last hour in data - get current ones
 	int nro_bins = end_run_hour - init_run_hour;
 
 	int Nads = 2;
@@ -54,13 +54,13 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 	float time_limit = 6./3600.;
 
 	char name_file[64], fileName[64];
-	sprintf(name_file,"./rates_stuff/EH%d_runs.dat",nHall);
+	sprintf(name_file,"./rates_stuff/EH%d_runs.dat",nHall); // this file contains all the run numbers for the data - you must generate it via the run_list_good.txt
 	FILE* runfile = fopen(name_file,"r");
 	while (1) {
-		fscanf(runfile,"%d",&run_num);
+		fscanf(runfile,"%d",&run_num); //
 		if(feof(runfile)) break;
 
-		sprintf(fileName,"../../beda/for_cristobal/run_%d_muon_EH%d.root",run_num,nHall);
+		sprintf(fileName,"../../beda/for_cristobal/run_%d_muon_EH%d.root",run_num,nHall); // file(s) generated via GetMuons.c
 		cout<<fileName<<endl;
 
 		f_temp = new TFile(fileName,"READ");
@@ -68,7 +68,6 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 		det_temp = (TTree*)f_temp->Get("detector");
 		time_temp = (TTree*)f_temp->Get("time");
 		en_temp = (TTree*)f_temp->Get("m_energy");
-		pos = (TTree*)f_temp->Get("position");
 
 		det_temp->SetBranchAddress("ADdetector",&det);
 		time_temp->SetBranchAddress("timesec",&sec);
@@ -76,15 +75,16 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 		en_temp->SetBranchAddress("muon_energy",&engy);
 
 		nentries = det_temp->GetEntries();
+		// this loop is to calculate effective time and muon count
 		for(int i=0;i<nentries;i++) {
 			det_temp->GetEntry(i);
 			time_temp->GetEntry(i);
 			en_temp->GetEntry(i);
-			pos->GetEntry(i);
 
-			if(run_num == 67633 || run_num == 67749 || run_num == 67755 || run_num == 67768) {
-				if(det==1) continue;
-			}
+			// We skip this run numbers for some reason, check this because maybe you don't need it
+			// if(run_num == 67633 || run_num == 67749 || run_num == 67755 || run_num == 67768) {
+			// 	if(det==1) continue;
+			// }
 
 			if(engy<200 && nHall==3 && det==1) continue;
 			if(engy<200 && (nHall!=3 || (nHall==3 && det>1)) )  continue;
@@ -118,7 +118,7 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 		en_temp->Delete();
 		f_temp->Close();
 		f_temp->Delete();
-	
+
 	}
 
 
@@ -171,7 +171,7 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 	// for(int i=0;i<Nads;i++) {m_rates[i]->Divide(h_eftv_time);}
 
 	char outname[64];
-	sprintf(outname,"../muon_rate_EH%d_v2.root",nHall); 
+	sprintf(outname,"../muon_rate_EH%d.root",nHall);
 	TFile* outfile = new TFile(outname,"RECREATE");
 
 	outfile->cd();
@@ -179,6 +179,5 @@ void do_rates(int nHall) { //name of the files fmt = run_%d_muon_EH%d.root
 	energy->Write();
 	h_eftv_time->Write();
 	outfile->Close();
-	
-}
 
+}

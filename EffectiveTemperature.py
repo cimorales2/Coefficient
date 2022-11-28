@@ -228,37 +228,42 @@ def Int_EffTemp(press,temps,E_EH,gm=1.7,b_pi=1.46,b_K=1.74,r_K=0.149,e_pi=114.,e
 		effTemps_arr = np.append(effTemps_arr,integration1/integration2)
 	return effTemps_arr
 
-nEH = 3 #1,2,3
+nEH = 3 #1,2,3 - Change here to calculate Teff for given EH
 if nEH == 1: energy = 37.
 if nEH == 2: energy = 41.
 if nEH == 3: energy = 143.
-ecmwf_file = "dayabay2_temps.dat"
+ecmwf_file = "dayabay2_temps.dat" # name of file with the temperature data set from ECMWF
 nEH = str(nEH)
 
+# IGRA data to calculate the uncertainty later
+# We use two close locations to daya bay, Shantou and Qingyuan - We use Shantou so you can the other lines
+# Shantou
 f = open("../temperature/CHM00059316-data.txt")
 Sht_days,Sht_temps,Sht_press = Igra_data(f)
 f.close()
+# Qingyuan
 f = open("../temperature/CHM00059280-data.txt")
 Qcy_days,Qcy_temps,Qcy_press = Igra_data(f)
 f.close()
 
-Sht_effTemps = np.array([get_eff_temp(Sht_temps[i],Sht_press[i], E_EH=energy) for i in range(len(Sht_days))])
-Qcy_effTemps = np.array([get_eff_temp(Qcy_temps[i],Qcy_press[i], E_EH=energy) for i in range(len(Qcy_days))])
+Sht_effTemps = np.array([get_eff_temp(Sht_temps[i],Sht_press[i], E_EH=energy) for i in range(len(Sht_days))]) # Shantou
+Qcy_effTemps = np.array([get_eff_temp(Qcy_temps[i],Qcy_press[i], E_EH=energy) for i in range(len(Qcy_days))]) # Qingyuan
 db_days,db_effTemps,db_temps,db_press = ECMWF_data(ecmwf_file, E_EH=energy)
 
 plt.figure()
 plt.plot(db_days,db_effTemps,".r",label="EMCWF")
-xtks = np.array([(date(2012,1,1)-date(1970,1,1))/timedelta(seconds=1),
+xtks = np.array([(date(2012,1,1)-date(1970,1,1))/timedelta(seconds=1), # Here is just definition of the plotting ticks, comment or add the rest of the dates and dates are in Unix time
 		(date(2013,1,1)-date(1970,1,1))/timedelta(seconds=1),
 		(date(2014,1,1)-date(1970,1,1))/timedelta(seconds=1),
 		(date(2015,1,1)-date(1970,1,1))/timedelta(seconds=1),
 		(date(2016,1,1)-date(1970,1,1))/timedelta(seconds=1),
 		(date(2017,1,1)-date(1970,1,1))/timedelta(seconds=1),])
-xtks = (xtks - xtks%(3600*24))/(3600*24)
-plt.xticks(xtks, ["01 Jan 12", "01 Jan 13", "01 Jan 14", "01 Jan 15", "01 Jan 16", "01 Jan 17"])
+xtks = (xtks - xtks%(3600*24))/(3600*24) # I change full unix time to hours unix time
+plt.xticks(xtks, ["01 Jan 12", "01 Jan 13", "01 Jan 14", "01 Jan 15", "01 Jan 16", "01 Jan 17"]) # same as last line
 plt.ylabel("Temperature [K]",horizontalalignment="right",y=1.0)
 plt.show()
 
+# Calculate uncertainty by difference of database
 dT = Sht_effTemps - db_effTemps
 
 plt.figure()
@@ -282,6 +287,7 @@ plt.xlim(-2.5,2.5)
 plt.show()
 
 # Bootstrap --------------------------------------------
+# Propagate uncertainties of parameters to Teff
 
 nro_rep = int(1e3)
 
@@ -364,9 +370,9 @@ lns = ln1 + ln2
 labs = [l.get_label() for l in lns]
 ax1.legend(lns,labs,loc=1)
 
-perc  = np.percentile(sigmas,[16,50,84])
+perc  = np.percentile(sigmas,[16,50,84]) # This gives you the uncertainty of propagation
 
 mean_Teff = db_effTemps.mean()
-sig = np.sqrt(result.best_values["wid"]**2 + perc[1]**2)
+sig = np.sqrt(result.best_values["wid"]**2 + perc[1]**2) # first is difference of database uncerainty and the second is the propagation
 print(mean_Teff,sig)
-np.savetxt("../temperature/Teff_EH"+nEH+".dat",np.column_stack((db_days,db_effTemps)),header="{0} {1}".format(mean_Teff,sig),fmt="%d %f")
+np.savetxt("../temperature/Teff_EH"+nEH+".dat",np.column_stack((db_days,db_effTemps)),header="{0} {1}".format(mean_Teff,sig),fmt="%d %f") # save .dat files of the effective temperature

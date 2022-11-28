@@ -22,12 +22,11 @@ void get_muon_rate(int entry_num) {
 	TChain* reconT_AdSimple=new TChain("/Event/Rec/AdSimple");
     TChain* calibStatsT=new TChain("/Event/Data/CalibStats");
 
-
     //---get files
     int run_num=-1;
     int EH=-1;
 
-    FILE* runfile=fopen("./run_list_good.txt","r");
+    FILE* runfile=fopen("./run_list_good.txt","r"); // point into the list of good runs
     int iline=1;
     while(1){
         fscanf(runfile,"%d %d",&run_num,&EH);
@@ -37,8 +36,8 @@ void get_muon_rate(int entry_num) {
     }
     fclose(runfile);
 
+ 	// file with the path of all data files
     ifstream inputfile("/global/project/projectdirs/dayabay/scratch/mkramer/p17b/release/data/v3/pub/paths.physics.good.p17b.v3.sync.txt");
-    // ifstream inputfile("/global/homes/m/mkramer/projscratch/p17b/release/data/v1/pub/physics.good.txt");
     std::string line;
 
     while(1){  //reading the data from file
@@ -72,7 +71,6 @@ void get_muon_rate(int entry_num) {
     cout<<"There are "<<nentries<<" entries"<<endl;
 
     //Chain---------------------------------------------------
-
 
     reconT_AdSimple->SetBranchStatus("*",0);
     calibStatsT->SetBranchStatus("*",0);
@@ -124,7 +122,7 @@ void get_muon_rate(int entry_num) {
 
     float Ecut; //MeV
 
-    float time_window = 2.; //us
+    float time_window = 2.; //us - correlation window with event in WS
 
     int last_muon_sec = 0, last_muon_nanosec = 0, last_muon_nHit = 0;
     int current_timesec = 0, current_timenanosec = 0;
@@ -148,8 +146,8 @@ void get_muon_rate(int entry_num) {
         	continue;
         }
 
-        Ecut = 60.;
-        if(EH==3 && detector==1) Ecut=100.;
+        Ecut = 60.; // Definition of the cut on energy
+        if(EH==3 && detector==1) Ecut=100.; // EH3 AD1 selection cut is 100 MeV
         if(energy>=Ecut) {
         	time_diff = (time_sec-last_muon_sec)*1.e6+(time_nanosec-last_muon_nanosec)*1e-3;
         	if(time_diff<time_window && last_muon_nHit>12) muon_event = true;
@@ -185,7 +183,7 @@ void get_muon_rate(int entry_num) {
     }
 
     char out_name[64];
-    sprintf(out_name,"/global/cscratch1/sd/cimorale/files/run_%d_muon_EH%d.root",run_num,EH);
+    sprintf(out_name,"/global/cscratch1/sd/cimorale/files/run_%d_muon_EH%d.root",run_num,EH); // path of where to save the file
     TFile* output = new TFile(out_name,"RECREATE");
     output->cd();
     det->CloneTree(-1,"fast");

@@ -25,10 +25,10 @@ using namespace std;
 
 void coefficient() {
 
-	TCanvas* c = new TCanvas("all","all",2000,4000);
+	TCanvas* c = new TCanvas("all","all",2000,4000); // here correlation at each ad is plotted
 	c->Divide(2,4,0.0001,0.0001);
 
-	TCanvas* asd = new TCanvas("asd","asd",3000,1000);
+	TCanvas* asd = new TCanvas("asd","asd",3000,1000); // here correlation of combined ads is plotted
 	asd->Divide(3,1,0.000001,0.01);
 
 	for(int iEH=1; iEH<=3; iEH++) {
@@ -49,7 +49,7 @@ void coefficient() {
 		TF1* f1[Nads];
 		TF1* f_all = new TF1("f_all","[0] + [1]*x");
 		f_all->SetParNames("q","m");
-		TH2F* Allcoeff_hist = new TH2F("All_coeff","All_coeff",30,-2,2,30,-2,2);
+		TH2F* Allcoeff_hist = new TH2F("All_coeff","All_coeff",30,-2,2,30,-2,2); //used for drawing countors, not needed
 		TH1F* hist_rate[Nads];
 		TH1F* hist_temp[Nads];
 		TH2F* coeff_hist[Nads];
@@ -82,8 +82,8 @@ void coefficient() {
 				day_temp = ((int)bin_center-(int)bin_center%24)/24;
 
 				if(day_temp>c_day) {
-					// if(total_time>=6.*3600.) {AD_rates[iAD]->SetBinError(c_day-first_day,sqrt(error)/aux_rate);}
-					// else AD_rates[iAD]->SetBinError(c_day-first_day,0);
+					if(total_time>=6.*3600.) {AD_rates[iAD]->SetBinError(c_day-first_day,sqrt(error)/aux_rate);}
+					else AD_rates[iAD]->SetBinError(c_day-first_day,0);
 					c_day++;
 					error = 0.;
 					total_time = 0.;
@@ -99,41 +99,25 @@ void coefficient() {
 				global_tot_time += aux;
 				aux_rate++;
 
-				if(ibin==hour_rate->GetNbinsX()) {
-					if(total_time>=6.*3600.) {
-						// content /= aux_rate;
-						content /= total_time;
-						// AD_rates[iAD]->SetBinError(c_day-first_day,sqrt(error)/aux_rate);
-					}
-					// else AD_rates[iAD]->SetBinError(c_day-first_day,0);
-				}
-
 			}
 			// ---------------------------------------------------------
 
-			sprintf(filename,"../temperature/Teff_EH%d.dat",iEH);
+			sprintf(filename,"../temperature/Teff_EH%d.dat",iEH); //change here to location of the temperature data
 			FILE* fp = fopen(filename,"r");
 			int aux_day;
 
+			// Retrieve temperature data - in my case there are 2078 days, so you must change it to the correspoding
 			for(int iline=0;iline<2078;iline++) {
-				if(iline==0) {
+				if(iline==0) { // my case the first line was a header with mean effective temp. and its uncerainty
 					fscanf(fp,"# %f %f",&mean_Teff,&sig_Teff);
 					continue;
 				}
 
-				fscanf(fp,"%d %f",&aux_day,&aux_T);
+				fscanf(fp,"%d %f",&aux_day,&aux_T); // entry of each day is given as: day Teff
 				aux_R = AD_rates[iAD]->GetBinContent(iline);
 
 				use[iAD][iline-1] = true;
-				// if(aux_day<15323 || aux_day>16071) use[iAD][iline-1] = false; //Paper period
-				// if(aux_day>16430) use[iAD][iline-1] = false; //Pre-
-				// if(aux_day<=16430) use[iAD][iline-1] = false; //Post-
-
-				// if(!((aux_day>15512 && aux_day<=15604) || (aux_day>15877 && aux_day<=15969) || (aux_day>16242 && aux_day<=16334) || (aux_day>16607 && aux_day<=16699) || (aux_day>16972 && aux_day<=17064) || (aux_day>17337) )) {
-				// 	if(!((aux_day<=15420) || (aux_day>15695 && aux_day<=15785) || (aux_day>16060 && aux_day<=16150) || (aux_day>16425 && aux_day<=16515) || (aux_day>16790 && aux_day<=16880) || (aux_day>17155 && aux_day<=17245) )) use[iAD][iline-1] = false;
-				// }
-				if((aux_day>=15342 && aux_day<=15353) && iEH==3 && iAD==2) use[iAD][iline-1] = false; //Weird days
-
+				if((aux_day>=15342 && aux_day<=15353) && iEH==3 && iAD==2) use[iAD][iline-1] = false; //These were some outliner days found, comment to keep these days
 
 				if(aux_R == 0) use[iAD][iline-1] = false;
 				if(aux_day!=AD_rates[iAD]->GetBinLowEdge(iline) || aux_R==0) {
@@ -150,14 +134,19 @@ void coefficient() {
 			sig_mean_rate[iAD] = 0;
 			mean_rate[iAD] = 0;
 			mean_Teff = 0;
-			for(int j=0;j<2077;j++) {if(use[iAD][j]) { mean_Teff+=Teff[iAD][j]; mean_rate[iAD]+=rate[iAD][j]; count++; sig_mean_rate[iAD]+=pow(sigrate[iAD][j],2);}}
-			mean_rate[iAD] /= count;
-			// mean_rate[iAD] = global_mean/global_tot_time;
+			//Two ways of calculating the mean rate:
+			//	1) "Classical" of summing all rates and divide buy the total amount of measured days
+			//	2) Another is to take the total amount of muons ("global_mean") and divide by the total live time ("global_tot_time")
+			//Sadly I dont remember which one we used, I think it was method 2
+			for(int j=0;j<2077;j++) {if(use[iAD][j]) { mean_Teff+=Teff[iAD][j]; mean_rate[iAD]+=rate[iAD][j]; count++; sig_mean_rate[iAD]+=pow(sigrate[iAD][j],2);}} //method 1
+			mean_rate[iAD] /= count; // method 1
+			sig_mean_rate[iAD] = sqrt(sig_mean_rate[iAD])/count; // method 1
+			// mean_rate[iAD] = global_mean/global_tot_time; // method 2
+			// sig_mean_rate[iAD] = sqrt(global_mean)/global_tot_time; // method 2
+
 			mean_Teff /=  count;
-			sig_mean_rate[iAD] = sqrt(sig_mean_rate[iAD])/count;
-			// sig_mean_rate[iAD] = sqrt(global_mean)/global_tot_time;
+
 			gr[iAD] = new TGraphErrors();
-			// gr[iAD] = new TGraph();
 			char th2_name[64];sprintf(th2_name,"coeff_AD%d",iAD+1);
 			coeff_hist[iAD] = new TH2F(th2_name,th2_name,30,-2,2,30,-2,2);
 			sprintf(h_rate_name,"rate_AD%d",iAD+1);
@@ -176,10 +165,7 @@ void coefficient() {
 				double y = 100*diff_R/mean_rate[iAD];
 				double dR = sqrt( pow(sigrate[iAD][ientry],2) + pow(sig_mean_rate[iAD],2) );
 				double ey = 100*abs(sigrate[iAD][ientry])/mean_rate[iAD];
-				// double ey = sqrt( pow(dR/diff_R,2) + pow(sig_mean_rate[iAD]/mean_rate[iAD],2) ) * abs(y);
 
-				// if((y<-2 || y>2) && iAD==2) continue;
-				// if(ey>1) continue;
 				hist_rate[iAD]->SetBinContent(ientry,rate[iAD][ientry]);
 				hist_temp[iAD]->SetBinContent(ientry,Teff[iAD][ientry]);
 
@@ -187,7 +173,7 @@ void coefficient() {
 				gr[iAD]->SetPointError(aux3, ex, ey);
 				all_gr->TGraphErrors::SetPoint(aux4, x, y);
 				if(iEH==3 && iAD==0) {
-					float new_err = sqrt( pow(ey,2) + pow(0.1536*y,2) )/ey; //15%^2 + 3.31%^2
+					float new_err = sqrt( pow(ey,2) + pow(0.1536*y,2) )/ey; // include syst uncerainty for EH3 AD1 when calculating combined fit - must be recaulculated
 					all_gr->SetPointError(aux4, ex, new_err);
 				} else {
 					all_gr->SetPointError(aux4, ex, ey);
@@ -198,7 +184,7 @@ void coefficient() {
 				aux4++;
 			}
 
-
+			//Plotting options of correlation plots
 			char func_name[64];sprintf(func_name,"f%d",iAD+1);
 			f1[iAD] = new TF1(func_name,"[0] + x*[1]");
 			f1[iAD]->SetParName(0,"q");
@@ -210,18 +196,14 @@ void coefficient() {
 				gr[iAD]->GetXaxis()->SetLimits(-2.5,2);
 				gr[iAD]->GetYaxis()->SetRangeUser(-1.5,2);
 			}
-			// f1[iAD]->FixParameter(0,0);
 			gr[iAD]->Fit(func_name,"Q");
 
 			alph[iAD][0] = f1[iAD]->GetParameter(1);
 			alph[iAD][1] = f1[iAD]->GetParError(1);
 
 
-			// char canvas_name[64];sprintf(canvas_name,"c%d",iAD+1);
-			// c[iAD] = new TCanvas(canvas_name,canvas_name);
 			c->cd(2*iEH+iAD-1);
 			gr[iAD]->Draw("A P");
-			// coeff_hist[iAD]->Draw("SAME CONTZ");
 			gPad->Update();
 
 			gStyle->SetOptFit();
@@ -230,7 +212,6 @@ void coefficient() {
 			c->Modified();
 			c->Update();
 			TPaveStats* st = (TPaveStats*)gr[iAD]->FindObject("stats");
-			// TPaveStats* st = new TPaveStats(0.6,0.1,0.9,0.3);
 			st->SetX1NDC(0.1);
 			st->SetX2NDC(0.51);
 			st->SetY1NDC(0.65);
@@ -252,7 +233,6 @@ void coefficient() {
             gPad->SetBottomMargin(0.15);
 			gPad->Update();
 			gPad->SetGrid(1,1);
-			// AD_rates[iAD]->Draw();
 			char plotname[64];sprintf(plotname,"EH%d AD%d",iEH,iAD+1);
 			gr[iAD]->SetTitle(plotname);
 			gr[iAD]->SetMarkerStyle(kFullCircle);
@@ -268,39 +248,17 @@ void coefficient() {
             gr[iAD]->GetYaxis()->SetTitleOffset(0.6);
             gr[iAD]->GetXaxis()->SetTitleOffset(1);
 
-
-			// sprintf(filename,"../coeff/coeff_EH%dAD%d.png",iEH,iAD+1);
-			// c[iAD]->SaveAs(filename);
-			// c[iAD]->Close();
-
 		}
 
 		for(int iAD=0;iAD<Nads;iAD++) {
-			float syst_err = 15.05/100.;
-			if(iEH==3 && iAD==0) syst_err = 15.35/100.;
+			float syst_err = 15.05/100.; //systematic uncertainty - change for current
+			if(iEH==3 && iAD==0) syst_err = 15.35/100.; //systematic uncertainty - change for current
 			cout<<"alph AD"<<iAD+1<<" = "<<alph[iAD][0]<<" +/- "<<alph[iAD][1]<<" +/- "<<alph[iAD][0]*syst_err<<" "<< sqrt( pow(alph[iAD][1],2) + pow(alph[iAD][0]*syst_err,2) ) <<endl;
 		}
-		// TCanvas* axc[Nads];
-		// char name_axc[64];
-		// for(int iAD=0;iAD<Nads;iAD++) {
-		// 	c[iAD]->Close();
-		// 	sprintf(name_axc,"c%d_rate",iAD+1);
-		// 	axc[iAD] = new TCanvas(name_axc,name_axc,800,700);
-		// 	axc[iAD]->cd();
-		// 	hist_rate[iAD]->Scale(1./mean_rate[iAD]);
-		// 	hist_rate[iAD]->GetYaxis()->SetRangeUser(0.98,1.02);
-		// 	hist_rate[iAD]->SetMarkerColor(4);
-		// 	hist_rate[iAD]->SetMarkerStyle(kFullCircle);
-		// 	hist_temp[iAD]->Scale(1./mean_Teff);
-		// 	hist_temp[iAD]->SetMarkerColor(3);
-		// 	hist_temp[iAD]->SetMarkerStyle(kFullCircle);
-		// 	hist_rate[iAD]->Draw("HIST P");
-		// 	hist_temp[iAD]->Draw("SAME HIST P");
-		// 	gPad->SetGrid();
-		// }
 
+		// Combined results
 		all_gr->Fit("f_all","Q");
-		cout<<"alph EH"<<iEH<<" = "<<f_all->GetParameter(1)<< " +/- "<<f_all->GetParError(1)<<" +/- "<<f_all->GetParameter(1)*0.1505<<" "<<sqrt( pow(f_all->GetParameter(1)*0.1505,2) + pow(f_all->GetParError(1),2) )<<endl;
+		cout<<"alph EH"<<iEH<<" = "<<f_all->GetParameter(1)<< " +/- "<<f_all->GetParError(1)<<" +/- "<<f_all->GetParameter(1)*0.1505<<" "<<sqrt( pow(f_all->GetParameter(1)*0.1505,2) + pow(f_all->GetParError(1),2) )<<endl; //systematic uncertainty (0.1505) - change for current
 		asd->cd(iEH);
 		all_gr->Draw("A P");
 		// Allcoeff_hist->Draw("SAME CONTZ");
@@ -347,7 +305,7 @@ void coefficient() {
 
 	}
 
-	asd->SaveAs("../coeff/coeff_EH_v2.png");
-	// c->SaveAs("../coeff/all_coeff.png");
+	asd->SaveAs("../coeff/coeff_EH.png");
+	c->SaveAs("../coeff/all_coeff.png");
 
 }
